@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dragon Space</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <canvas id="dragonCanvas"></canvas>
+
+    <div class="hud">
+        <p class="hud-title">TIEMPO</p>
+        <p class="hud-score"><span id="score">0.0</span>s</p>
+        <p class="hud-title">RÉCORDS</p>
+        <ol id="records"></ol>
+    </div>
+
+    <div class="game-over hidden" id="gameOver">
+        <p class="arcade shout" id="msgLost">¡Has perdido!</p>
+        <p class="arcade hidden" id="msgRetry">Vuelve a intentarlo</p>
+        <button class="arcade hidden" id="retryBtn">Reiniciar</button>
+    </div>
+
+    <div class="pause hidden" id="pauseMenu">
+        <p class="arcade shout">PAUSA</p>
+        <p class="arcade pause-best">Mejor tiempo: <span id="pauseBest">0.0</span>s</p>
+
+        <div id="pauseScores" class="pause-scores hidden">
+            <p class="arcade mini">Últimas puntuaciones</p>
+            <ol id="pauseRecords"></ol>
+        </div>
+
+        <div class="pause-buttons">
+            <button class="arcade" id="resumeBtn">Continuar</button>
+            <button class="arcade" id="scoresBtn">Ver puntuaciones</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

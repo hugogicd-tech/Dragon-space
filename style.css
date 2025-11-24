@@ -1,0 +1,174 @@
+:root {
+    --bg-space: radial-gradient(circle at 25% 20%, #1b1f3a 0%, #050614 55%, #03020a 100%);
+    --scanline-color: rgba(255, 255, 255, 0.03);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg-space);
+    min-height: 100vh;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    color: #e3e6ff;
+    overflow: hidden;
+    cursor: none;
+}
+
+#dragonCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+        0 0 25px rgba(43, 120, 255, 0.2),
+        inset 0 0 40px rgba(0, 0, 0, 0.45);
+    background:
+        repeating-linear-gradient(
+            0deg,
+            transparent 0px,
+            transparent 3px,
+            var(--scanline-color) 3px,
+            var(--scanline-color) 4px
+        ),
+        transparent;
+    transition: filter 0.25s ease, transform 0.25s ease;
+}
+
+#dragonCanvas.hit {
+    filter: brightness(1.9) saturate(1.5);
+    transform: translateY(-2px);
+}
+
+.hud {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    padding: 16px 18px;
+    background: rgba(3, 2, 10, 0.55);
+    border: 1px solid rgba(0, 200, 255, 0.3);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    border-radius: 8px;
+    width: 180px;
+}
+
+.hud-title {
+    margin: 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    color: rgba(227, 230, 255, 0.7);
+}
+
+.hud-score {
+    margin: 8px 0 16px;
+    font-size: 1.7rem;
+    font-weight: 600;
+    color: #00d4ff;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.6);
+}
+
+#records {
+    margin: 6px 0 0;
+    padding-left: 20px;
+    font-size: 0.9rem;
+    color: rgba(227, 230, 255, 0.85);
+}
+
+#records li {
+    margin-bottom: 4px;
+}
+
+.game-over {
+    position: absolute;
+    inset: 0;
+    background: rgba(3, 2, 10, 0.85);
+    display: flex;
+    flex-direction: column; 
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    text-align: center;
+}
+
+.pause {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 3, 13, 0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    text-align: center;
+    padding: 24px;
+}
+
+.pause-best {
+    font-size: 1rem;
+    margin: 0;
+}
+
+.pause-buttons {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.pause-buttons button,
+#retryBtn {
+    padding: 12px 28px;
+    border: 2px solid #00f6ff;
+    background: transparent;
+    color: #00f6ff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pause-buttons button:hover,
+#retryBtn:hover {
+    background: #00f6ff;
+    color: #05030d;
+    box-shadow: 0 0 14px #00f6ff;
+}
+
+.pause-scores {
+    max-width: 260px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 12px 18px;
+    border-radius: 10px;
+    background: rgba(3, 2, 10, 0.6);
+}
+
+.pause-scores ol {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    text-align: left;
+}
+
+.pause-scores li {
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+}
+
+.arcade.mini {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.arcade {
+    font-family: 'Press Start 2P', cursive;
+    letter-spacing: 0.15em;
+    color: #fffbef;
+}
+
+.shout {
+    font-size: 2rem;
+    text-shadow: 0 0 12px #ff5f8f;
+}

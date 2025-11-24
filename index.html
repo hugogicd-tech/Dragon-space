@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dragon Space</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Puntero Dragón Arcade</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
@@ -19,10 +19,19 @@
         <ol id="records"></ol>
     </div>
 
+    <!-- Controles táctiles (solo visibles en móvil) -->
+    <div class="mobile-controls hidden" id="mobileControls">
+        <button class="btn-arrow" id="btnUp">▲</button>
+        <button class="btn-arrow" id="btnDown">▼</button>
+        <button class="btn-arrow" id="btnLeft">◀</button>
+        <button class="btn-arrow" id="btnRight">▶</button>
+        <button class="btn-pause" id="btnPause">⏸</button>
+    </div>
+
     <div class="game-over hidden" id="gameOver">
         <p class="arcade shout" id="msgLost">¡Has perdido!</p>
         <p class="arcade hidden" id="msgRetry">Vuelve a intentarlo</p>
-        <button class="arcade hidden" id="retryBtn">Reiniciar</button>
+        <button class="arcade" id="retryBtn">Reiniciar</button>
     </div>
 
     <div class="pause hidden" id="pauseMenu">

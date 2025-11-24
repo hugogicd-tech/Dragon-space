@@ -15,6 +15,7 @@ body {
     color: #e3e6ff;
     overflow: hidden;
     cursor: none;
+    touch-action: none;
 }
 
 #dragonCanvas {
@@ -52,6 +53,7 @@ body {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
     border-radius: 8px;
     width: 180px;
+    z-index: 10;
 }
 
 .hud-title {
@@ -80,16 +82,94 @@ body {
     margin-bottom: 4px;
 }
 
+/* ========== CONTROLES MÓVILES ========== */
+.mobile-controls {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: grid;
+    grid-template-columns: repeat(3, 60px);
+    grid-template-rows: repeat(3, 60px);
+    gap: 8px;
+    z-index: 100;
+    cursor: pointer;
+}
+
+.btn-arrow {
+    background: rgba(0, 246, 255, 0.2);
+    border: 2px solid #00f6ff;
+    color: #00f6ff;
+    font-size: 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-arrow:active {
+    background: rgba(0, 246, 255, 0.5);
+    transform: scale(0.95);
+}
+
+#btnUp {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+#btnDown {
+    grid-column: 2;
+    grid-row: 3;
+}
+
+#btnLeft {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+#btnRight {
+    grid-column: 3;
+    grid-row: 2;
+}
+
+.btn-pause {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 246, 255, 0.2);
+    border: 2px solid #00f6ff;
+    color: #00f6ff;
+    font-size: 1.2rem;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.btn-pause:active {
+    background: rgba(0, 246, 255, 0.5);
+    transform: scale(0.95);
+}
+
+/* ========== PANELES ========== */
 .game-over {
     position: absolute;
     inset: 0;
     background: rgba(3, 2, 10, 0.85);
     display: flex;
-    flex-direction: column; 
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 18px;
     text-align: center;
+    z-index: 200;
 }
 
 .pause {
@@ -103,6 +183,7 @@ body {
     gap: 18px;
     text-align: center;
     padding: 24px;
+    z-index: 200;
 }
 
 .pause-best {
@@ -125,6 +206,8 @@ body {
     color: #00f6ff;
     cursor: pointer;
     transition: all 0.2s ease;
+    font-family: 'Press Start 2P', cursive;
+    letter-spacing: 0.1em;
 }
 
 .pause-buttons button:hover,
@@ -171,4 +254,37 @@ body {
 .shout {
     font-size: 2rem;
     text-shadow: 0 0 12px #ff5f8f;
+}
+
+/* ========== RESPONSIVE MÓVIL ========== */
+@media (max-width: 768px) {
+    body {
+        cursor: auto;
+    }
+
+    .hud {
+        top: 12px;
+        left: 12px;
+        padding: 10px 12px;
+        width: 140px;
+        font-size: 0.85rem;
+    }
+
+    .hud-score {
+        font-size: 1.3rem;
+    }
+
+    #records {
+        font-size: 0.75rem;
+    }
+
+    .shout {
+        font-size: 1.5rem;
+    }
+
+    .pause-buttons button,
+    #retryBtn {
+        padding: 10px 20px;
+        font-size: 0.8rem;
+    }
 }

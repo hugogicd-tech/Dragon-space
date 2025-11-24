@@ -16,9 +16,17 @@ const pauseScoresBox = document.getElementById('pauseScores');
 const resumeBtn = document.getElementById('resumeBtn');
 const scoresBtn = document.getElementById('scoresBtn');
 
-// Sprite personalizado para la cabeza (vacío para usar el círculo)
+// Controles móviles
+const mobileControls = document.getElementById('mobileControls');
+const btnUp = document.getElementById('btnUp');
+const btnDown = document.getElementById('btnDown');
+const btnLeft = document.getElementById('btnLeft');
+const btnRight = document.getElementById('btnRight');
+const btnPause = document.getElementById('btnPause');
+
+// Sprite personalizado para la cabeza
 const dragonSprite = new Image();
-dragonSprite.src = '';
+dragonSprite.src = 'assets/dragon-head.png';
 let spriteReady = false;
 dragonSprite.onload = () => (spriteReady = true);
 
@@ -42,7 +50,8 @@ const state = {
     recentScores: [],
     currentScrollSpeed: 1.6,
     currentStarSpeed: 0.5,
-    currentObstacleSpeed: 0.8
+    currentObstacleSpeed: 0.8,
+    isMobile: false
 };
 
 const config = {
@@ -62,11 +71,8 @@ const config = {
     maxObstacleSpeed: 3.2,
     baseObstacleCount: 4,
     maxObstacleCount: 12,
-    difficultyRampTime: 120 // segundos hasta llegar al máximo
+    difficultyRampTime: 120
 };
-
-const HUD_UPDATE_INTERVAL = 0.12; // segundos
-let hudAccumulator = 0;
 
 const obstacleTypes = [
     { type: 'meteor', color: '#ff944d' },
@@ -76,8 +82,24 @@ const obstacleTypes = [
     { type: 'nebula', color: '#d05bff' }
 ];
 
-// ===================== EVENTOS DE CONTROL =====================
+// ===================== DETECCIÓN DE MÓVIL =====================
+function detectMobile() {
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const isSmallScreen = window.innerWidth <= 768;
+    return isTouchDevice && isSmallScreen;
+}
+
+state.isMobile = detectMobile();
+
+if (state.isMobile) {
+    mobileControls.classList.remove('hidden');
+    document.body.style.cursor = 'auto';
+}
+
+// ===================== EVENTOS DE CONTROL (TECLADO) =====================
 function handleKey(e, isDown) {
+    if (state.isMobile) return; // Ignorar teclado en móvil
+
     const key = e.key.toLowerCase();
 
     // Reiniciar tras perder
@@ -118,16 +140,73 @@ function handleKey(e, isDown) {
 
 window.addEventListener('keydown', (e) => handleKey(e, true));
 window.addEventListener('keyup', (e) => handleKey(e, false));
+
+// ===================== EVENTOS TÁCTILES (MÓVIL) =====================
+function setupMobileControls() {
+    const setControl = (btn, direction, value) => {
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            state.controls[direction] = value;
+        });
+        btn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            state.controls[direction] = false;
+        });
+        btn.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            state.controls[direction] = false;
+        });
+    };
+
+    setControl(btnUp, 'up', true);
+    setControl(btnDown, 'down', true);
+    setControl(btnLeft, 'left', true);
+    setControl(btnRight, 'right', true);
+
+    btnPause.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (state.gameOver) return;
+        state.paused ? resumeGame() : pauseGame();
+    });
+}
+
+if (state.isMobile) {
+    setupMobileControls();
+}
+
+// ===================== EVENTOS GENERALES =====================
 window.addEventListener('resize', () => {
     resizeCanvas();
-    resetGame();
+    state.isMobile = detectMobile();
+    if (state.isMobile) {
+        mobileControls.classList.remove('hidden');
+    } else {
+        mobileControls.classList.add('hidden');
+    }
 });
+
 retryBtn.addEventListener('click', () => {
     hideGameOverPanel();
     resetGame();
 });
+
+retryBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    hideGameOverPanel();
+    resetGame();
+});
+
 resumeBtn.addEventListener('click', () => resumeGame());
+resumeBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    resumeGame();
+});
+
 scoresBtn.addEventListener('click', () => {
+    pauseScoresBox.classList.toggle('hidden');
+});
+scoresBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
     pauseScoresBox.classList.toggle('hidden');
 });
 
@@ -148,7 +227,6 @@ function resetGame() {
     state.paused = false;
     pauseMenu.classList.add('hidden');
     pauseScoresBox.classList.add('hidden');
-    hudAccumulator = 0;
     state.currentScrollSpeed = config.baseScrollSpeed;
     state.currentStarSpeed = config.baseStarSpeed;
     state.currentObstacleSpeed = config.baseObstacleSpeed;
@@ -325,57 +403,15 @@ function initStars() {
     }));
 }
 
-function buildObstacleAssets(type, radius) {
-    switch (type.type) {
-        case 'meteor': {
-            const points = [];
-            const sides = 6;
-            for (let i = 0; i < sides; i++) {
-                const angle = (Math.PI * 2 * i) / sides;
-                const r = radius * (0.7 + Math.random() * 0.3);
-                points.push({ x: Math.cos(angle) * r, y: Math.sin(angle) * r });
-            }
-            return { points };
-        }
-        case 'planet': {
-            const gradient = ctx.createRadialGradient(0, 0, 2, 0, 0, radius);
-            gradient.addColorStop(0, '#ffffff');
-            gradient.addColorStop(0.3, type.color);
-            gradient.addColorStop(1, '#8a73ff');
-            return {
-                gradient,
-                ringWidth: 3,
-                ringEllipse: { rx: radius * 1.2, ry: radius * 0.5 }
-            };
-        }
-        case 'nebula': {
-            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 1.4);
-            gradient.addColorStop(0, 'rgba(255,255,255,0.9)');
-            gradient.addColorStop(0.4, type.color);
-            gradient.addColorStop(1, 'rgba(0,0,0,0)');
-            return { gradient };
-        }
-        default:
-            return {};
-    }
-}
-
-function resetObstacle(obstacle, xStart) {
-    const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
-    const radius = 20 + Math.random() * 16;
-
-    obstacle.x = xStart;
-    obstacle.y = Math.random() * state.height * 0.9 + 40;
-    obstacle.radius = radius;
-    obstacle.angle = Math.random() * Math.PI * 2;
-    obstacle.baseSpeed = 0.6 + Math.random();
-    obstacle.type = type;
-    obstacle.renderData = buildObstacleAssets(type, radius);
-    return obstacle;
-}
-
 function createObstacle(xStart) {
-    return resetObstacle({}, xStart);
+    return {
+        x: xStart,
+        y: Math.random() * state.height * 0.9 + 40,
+        radius: 20 + Math.random() * 16,
+        angle: Math.random() * Math.PI * 2,
+        baseSpeed: 0.6 + Math.random(),
+        type: obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)]
+    };
 }
 
 function initObstacles(count) {
@@ -419,7 +455,7 @@ function updateObstacles() {
         obs.y += Math.sin(state.time * 0.01 + obs.angle) * 0.6;
 
         if (obs.x + obs.radius < -40) {
-            resetObstacle(obs, state.width + Math.random() * state.width);
+            Object.assign(obs, createObstacle(state.width + Math.random() * state.width));
         }
     }
 }
@@ -432,14 +468,15 @@ function drawObstacles() {
 
         switch (obs.type.type) {
             case 'meteor': {
-                const { points } = obs.renderData;
                 ctx.fillStyle = obs.type.color;
                 ctx.beginPath();
-                ctx.moveTo(points[0].x, points[0].y);
-                for (let i = 1; i < points.length; i++) {
-                    ctx.lineTo(points[i].x, points[i].y);
+                for (let i = 0; i <= 6; i++) {
+                    const angle = (Math.PI * 2 * i) / 6;
+                    const radius = obs.radius * (0.7 + Math.random() * 0.3);
+                    const px = Math.cos(angle) * radius;
+                    const py = Math.sin(angle) * radius;
+                    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
                 }
-                ctx.closePath();
                 ctx.fill();
                 break;
             }
@@ -465,20 +502,27 @@ function drawObstacles() {
                 break;
             }
             case 'planet': {
-                const { gradient, ringWidth, ringEllipse } = obs.renderData;
-                ctx.fillStyle = gradient;
+                const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, obs.radius);
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(0.3, obs.type.color);
+                grad.addColorStop(1, '#8a73ff');
+                ctx.fillStyle = grad;
                 ctx.beginPath();
                 ctx.arc(0, 0, obs.radius, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.strokeStyle = 'rgba(255,255,255,0.45)';
-                ctx.lineWidth = ringWidth;
+                ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.ellipse(0, 0, ringEllipse.rx, ringEllipse.ry, 0.4, 0, Math.PI * 2);
+                ctx.ellipse(0, 0, obs.radius * 1.2, obs.radius * 0.5, 0.4, 0, Math.PI * 2);
                 ctx.stroke();
                 break;
             }
             default: {
-                ctx.fillStyle = obs.renderData.gradient;
+                const nebGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, obs.radius * 1.4);
+                nebGrad.addColorStop(0, 'rgba(255,255,255,0.9)');
+                nebGrad.addColorStop(0.4, obs.type.color);
+                nebGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = nebGrad;
                 ctx.beginPath();
                 ctx.arc(0, 0, obs.radius * 1.4, 0, Math.PI * 2);
                 ctx.fill();
@@ -499,7 +543,7 @@ class Ember {
         this.x = x;
         this.y = y;
         this.vx = vx;
-               this.vy = vy;
+        this.vy = vy;
         this.life = life;
         this.maxLife = life;
         this.color = color;
@@ -556,31 +600,6 @@ function spawnExplosion(x, y) {
     }
 }
 
-function updateParticleBucket(list) {
-    let write = 0;
-    for (let read = 0; read < list.length; read++) {
-        const particle = list[read];
-        if (particle.update()) {
-            list[write++] = particle;
-        }
-    }
-    list.length = write;
-}
-
-function updateParticles() {
-    updateParticleBucket(state.particles);
-    updateParticleBucket(state.explosionParticles);
-}
-
-function drawParticles() {
-    for (const particle of state.particles) {
-        particle.draw(ctx);
-    }
-    for (const particle of state.explosionParticles) {
-        particle.draw(ctx);
-    }
-}
-
 // ===================== COLISIONES Y SCORE =====================
 function checkCollisions() {
     if (state.gameOver) return;
@@ -612,7 +631,6 @@ function handleGameOver(x, y) {
     state.recentScores = state.recentScores.slice(-5);
 
     updateRecords();
-    updateHUD();
     showGameOverPanel();
 }
 
@@ -653,9 +671,7 @@ function renderDragon() {
         ctx.lineWidth = width * 0.45;
         ctx.stroke();
 
-        if ((i & 1) === 0) {
-            spawnTrailParticles(x2, y2);
-        }
+        spawnTrailParticles(x2, y2);
     }
 }
 
@@ -668,7 +684,7 @@ function renderHead() {
     ctx.translate(head.x, head.y);
     ctx.rotate(angle);
 
-    if (spriteReady && dragonSprite.src) {
+    if (spriteReady) {
         const scale = 0.4;
         const w = dragonSprite.width * scale;
         const h = dragonSprite.height * scale;
@@ -684,10 +700,23 @@ function renderHead() {
 }
 
 // ===================== LOOP PRINCIPAL =====================
+function updateParticles() {
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+        if (!state.particles[i].update()) state.particles.splice(i, 1);
+    }
+    for (let i = state.explosionParticles.length - 1; i >= 0; i--) {
+        if (!state.explosionParticles[i].update()) state.explosionParticles.splice(i, 1);
+    }
+}
+
+function drawParticles() {
+    for (const particle of state.particles) particle.draw(ctx);
+    for (const particle of state.explosionParticles) particle.draw(ctx);
+}
+
 function render() {
     const now = performance.now();
-    const deltaMs = Math.min(now - state.lastTimestamp, 50);
-    const delta = deltaMs / 1000;
+    const delta = now - state.lastTimestamp;
     state.lastTimestamp = now;
 
     if (state.paused) {
@@ -696,12 +725,8 @@ function render() {
     }
 
     if (!state.gameOver) {
-        state.score += delta;
-        hudAccumulator += delta;
-        if (hudAccumulator >= HUD_UPDATE_INTERVAL) {
-            hudAccumulator = 0;
-            updateHUD();
-        }
+        state.score += delta / 1000;
+        updateHUD();
         updateDifficulty();
     }
 

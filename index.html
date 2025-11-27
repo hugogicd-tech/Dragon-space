@@ -9,14 +9,51 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+    <body class="show-cursor">
+    <aside class="settings-drawer" id="settingsDrawer">
+        <button class="drawer-toggle" id="drawerToggle" aria-label="Abrir ajustes">☰</button>
+        <div class="drawer-content">
+            <h2 class="arcade mini">AJUSTES</h2>
+
+            <div class="drawer-section">
+                <p class="arcade micro">Modo de control</p>
+                <label class="drawer-option">
+                    <input type="radio" name="controlMode" value="keyboard" checked />
+                    <span>Teclado / Ratón</span>
+                </label>
+                <label class="drawer-option">
+                    <input type="radio" name="controlMode" value="touch" />
+                    <span>Táctil / Joystick</span>
+                </label>
+            </div>
+
+            <div class="drawer-section">
+                <p class="arcade micro">Rendimiento</p>
+                <label class="drawer-option">
+                    <input type="checkbox" id="reducedEffects" />
+                    <span>Modo de efectos reducidos</span>
+                </label>
+                <p class="drawer-note">Activa esta opción si notas bajadas de FPS en móvil.</p>
+            </div>
+        </div>
+    </aside>
+
+    <div class="settings-hint" id="settingsHint">
+        <p class="arcade mini">
+            Pulsa <span class="hint-key">Z</span> para desplegar ajustes en teclado.<br>
+            En móvil usa el botón <span class="hint-key">☰</span> o desliza desde la izquierda.
+        </p>
+        <button aria-label="Ocultar aviso" class="hint-close" id="hintClose">✕</button>
+    </div>
+    <!-- … resto del documento … -->
+
     <canvas id="dragonCanvas"></canvas>
 
     <div class="tutorial-banner">
-    <p class="arcade">
-        Usa <span class="key">WASD</span> o <span class="key">Flechas</span> para mover al dragón -
-        <span class="key">Enter</span> para pausar · ¡Esquiva los obstáculos y consigue el récord!
-    </p>
+        <p class="arcade">
+            Usa <span class="key">WASD</span> o <span class="key">Flechas</span> para mover al dragón ·
+            <span class="key">Enter</span> para pausar · ¡Esquiva los obstáculos y consigue el récord!
+        </p>
     </div>
 
     <div class="hud">

@@ -1,4 +1,4 @@
-// ===================== CANVAS, ESTADO Y HUD =====================
+// ==== CANVAS, ESTADO Y HUD ====
 const canvas = document.getElementById('dragonCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -24,6 +24,16 @@ const btnLeft = document.getElementById('btnLeft');
 const btnRight = document.getElementById('btnRight');
 const btnPause = document.getElementById('btnPause');
 
+// Panel lateral de ajustes
+const settingsDrawer = document.getElementById('settingsDrawer');
+const drawerToggle = document.getElementById('drawerToggle');
+const controlModeInputs = document.querySelectorAll('input[name="controlMode"]');
+const reducedEffectsToggle = document.getElementById('reducedEffects');
+
+// Aviso de ayuda
+const settingsHint = document.getElementById('settingsHint');
+const hintClose = document.getElementById('hintClose');
+
 // Sprite personalizado para la cabeza
 const dragonSprite = new Image();
 dragonSprite.src = 'imagen-estrella-punt-out.png';
@@ -32,6 +42,11 @@ let spriteReady = false;
 dragonSprite.onload = () => (spriteReady = true);
 
 const state = {
+    inputMode: 'keyboard',
+    touchPointer: { active: false, targetX: null, targetY: null },
+    reducedEffects: false,
+    touchDevice: false,
+    isMobile: false,
     width: window.innerWidth,
     height: window.innerHeight,
     pointer: { x: window.innerWidth * 0.2, y: window.innerHeight * 0.7 },
@@ -51,8 +66,7 @@ const state = {
     recentScores: [],
     currentScrollSpeed: 1.6,
     currentStarSpeed: 0.5,
-    currentObstacleSpeed: 0.8,
-    isMobile: false
+    currentObstacleSpeed: 0.8
 };
 
 const config = {
@@ -72,17 +86,63 @@ const config = {
     maxObstacleSpeed: 3.2,
     baseObstacleCount: 4,
     maxObstacleCount: 12,
+    maxObstacleCountMobile: 8,
     difficultyRampTime: 120
 };
 
+// ==== DETECCIÓN Y CONFIGURACIÓN DE CONTROLES ====
+function detectMobile() {
+    const touchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const narrowViewport = window.innerWidth <= 820;
+    const userAgentMobile = /android|iphone|ipad|ipod|windows phone|kindle/i.test(navigator.userAgent);
+    return touchCapable && (narrowViewport || userAgentMobile);
+}
 
-// ===================== EVENTOS DE CONTROL (TECLADO) =====================
+let mobileControlsReady = false;
+function ensureMobileControls() {
+    if (mobileControlsReady) return;
+    setupMobileControls();
+    mobileControlsReady = true;
+}
+
+function setInputMode(mode) {
+    state.inputMode = mode;
+    state.isMobile = mode === 'touch';
+
+    document.body.classList.toggle('show-cursor', mode === 'keyboard');
+
+    if (mode === 'touch') {
+        ensureMobileControls();
+        if (mobileControls) mobileControls.classList.remove('hidden');
+        if (btnPause) btnPause.classList.remove('hidden');
+        state.controls.left = state.controls.right = state.controls.up = state.controls.down = false;
+    } else {
+        if (mobileControls) mobileControls.classList.add('hidden');
+        if (btnPause) btnPause.classList.add('hidden');
+        state.touchPointer.active = false;
+        state.touchPointer.targetX = null;
+        state.touchPointer.targetY = null;
+    }
+
+    controlModeInputs.forEach((input) => {
+        input.checked = input.value === mode;
+    });
+
+    if (settingsDrawer) {
+        if (mode === 'keyboard') {
+            settingsDrawer.classList.add('open');
+        } else {
+            settingsDrawer.classList.remove('open');
+        }
+    }
+}
+
+// ==== EVENTOS DE CONTROL (TECLADO) ====
 function handleKey(e, isDown) {
-    if (state.isMobile) return; // Ignorar teclado en móvil
+    if (state.inputMode === 'touch') return;
 
     const key = e.key.toLowerCase();
 
-    // Reiniciar tras perder
     if (
         state.gameOver &&
         isDown &&
@@ -97,7 +157,6 @@ function handleKey(e, isDown) {
         return;
     }
 
-    // Pausa con Enter
     if (key === 'enter' && isDown && !state.gameOver) {
         state.paused ? resumeGame() : pauseGame();
         return;
@@ -121,47 +180,115 @@ function handleKey(e, isDown) {
 window.addEventListener('keydown', (e) => handleKey(e, true));
 window.addEventListener('keyup', (e) => handleKey(e, false));
 
-// ===================== EVENTOS TÁCTILES (MÓVIL) =====================
+// ==== EVENTOS TÁCTILES / PUNTERO (MÓVIL) ====
 function setupMobileControls() {
-    const setControl = (btn, direction, value) => {
-        btn.addEventListener('touchstart', (e) => {
+    if (!mobileControls) return;
+
+    const bindDirectional = (btn, direction) => {
+        if (!btn) return;
+
+        const activate = (e) => {
             e.preventDefault();
-            state.controls[direction] = value;
-        });
-        btn.addEventListener('touchend', (e) => {
+            state.controls[direction] = true;
+        };
+        const deactivate = (e) => {
             e.preventDefault();
             state.controls[direction] = false;
-        });
-        btn.addEventListener('touchcancel', (e) => {
-            e.preventDefault();
-            state.controls[direction] = false;
-        });
+        };
+
+        btn.addEventListener('touchstart', activate, { passive: false });
+        btn.addEventListener('pointerdown', activate);
+
+        ['touchend', 'touchcancel', 'pointerup', 'pointercancel', 'pointerleave'].forEach((evt) =>
+            btn.addEventListener(evt, deactivate, { passive: false })
+        );
     };
 
-    setControl(btnUp, 'up', true);
-    setControl(btnDown, 'down', true);
-    setControl(btnLeft, 'left', true);
-    setControl(btnRight, 'right', true);
+    bindDirectional(btnUp, 'up');
+    bindDirectional(btnDown, 'down');
+    bindDirectional(btnLeft, 'left');
+    bindDirectional(btnRight, 'right');
 
-    btnPause.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        if (state.gameOver) return;
-        state.paused ? resumeGame() : pauseGame();
-    });
+    if (btnPause) {
+        const togglePause = (e) => {
+            e.preventDefault();
+            if (state.gameOver) return;
+            state.paused ? resumeGame() : pauseGame();
+        };
+        btnPause.addEventListener('touchstart', togglePause, { passive: false });
+        btnPause.addEventListener('pointerdown', togglePause);
+    }
 }
 
-if (state.isMobile) {
-    setupMobileControls();
+function canvasCoordinates(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * state.width;
+    const y = ((e.clientY - rect.top) / rect.height) * state.height;
+    return {
+        x: Math.max(60, Math.min(state.width - 60, x)),
+        y: Math.max(60, Math.min(state.height - 60, y))
+    };
 }
 
-// ===================== EVENTOS GENERALES =====================
+let activePointerId = null;
+
+canvas.addEventListener('pointerdown', (e) => {
+    if (state.inputMode !== 'touch') return;
+    if (e.pointerType === 'mouse' && !state.touchDevice) return;
+
+    activePointerId = e.pointerId;
+    canvas.setPointerCapture(activePointerId);
+    const { x, y } = canvasCoordinates(e);
+    state.touchPointer = { active: true, targetX: x, targetY: y };
+});
+
+canvas.addEventListener('pointermove', (e) => {
+    if (state.inputMode !== 'touch') return;
+    if (!state.touchPointer.active || e.pointerId !== activePointerId) return;
+
+    const { x, y } = canvasCoordinates(e);
+    state.touchPointer.targetX = x;
+    state.touchPointer.targetY = y;
+});
+
+function stopPointerControl(e) {
+    if (state.inputMode !== 'touch') return;
+    if (e.pointerId !== activePointerId) return;
+    state.touchPointer.active = false;
+    state.touchPointer.targetX = null;
+    state.touchPointer.targetY = null;
+    activePointerId = null;
+}
+
+canvas.addEventListener('pointerup', stopPointerControl);
+canvas.addEventListener('pointercancel', stopPointerControl);
+
+// ==== EVENTOS GENERALES Y PANEL DE AJUSTES ====
+drawerToggle?.addEventListener('click', () => {
+    settingsDrawer.classList.toggle('open');
+    if (settingsDrawer.classList.contains('open')) {
+        settingsHint?.classList.add('hidden');
+    }
+});
+
+controlModeInputs.forEach((input) => {
+    input.addEventListener('change', () => setInputMode(input.value));
+});
+
+reducedEffectsToggle?.addEventListener('change', (e) => {
+    state.reducedEffects = e.target.checked;
+    initStars();
+    const target = state.reducedEffects
+        ? config.baseObstacleCount
+        : Math.round(lerp(config.baseObstacleCount, config.maxObstacleCount, difficultyFactor()));
+    syncObstacleCount(target);
+});
+
 window.addEventListener('resize', () => {
     resizeCanvas();
-    state.isMobile = detectMobile();
-    if (state.isMobile) {
-        mobileControls.classList.remove('hidden');
-    } else {
-        mobileControls.classList.add('hidden');
+    const autoMode = detectMobile() ? 'touch' : 'keyboard';
+    if (!settingsDrawer || !settingsDrawer.classList.contains('open')) {
+        setInputMode(autoMode);
     }
 });
 
@@ -190,13 +317,38 @@ scoresBtn.addEventListener('touchstart', (e) => {
     pauseScoresBox.classList.toggle('hidden');
 });
 
+// === BLOQUE DEL MENSAJE DE AYUDA ===
+hintClose?.addEventListener('click', () => {
+    settingsHint.classList.add('hidden');
+});
+
+if (settingsHint) {
+    setTimeout(() => {
+        settingsHint.classList.add('hidden');
+    }, 12000);
+}
+
 function resizeCanvas() {
-    canvas.width = state.width = window.innerWidth;
-    canvas.height = state.height = window.innerHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(window.innerWidth * dpr);
+    canvas.height = Math.floor(window.innerHeight * dpr);
+    canvas.style.width = `${window.innerWidth}px`;
+    canvas.style.height = `${window.innerHeight}px`;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+
+    state.width = window.innerWidth;
+    state.height = window.innerHeight;
+
+    if (settingsDrawer && state.isMobile && !settingsDrawer.classList.contains('open')) {
+        settingsDrawer.style.transform = '';
+    }
+
+    initStars();
 }
 resizeCanvas();
 
-// ===================== RESET & HUD =====================
+// ==== RESET & HUD ====
 function resetGame() {
     state.pointer.x = state.width * 0.2;
     state.pointer.y = Math.min(state.height - 120, state.height * 0.7);
@@ -251,7 +403,7 @@ function hideGameOverPanel() {
     retryBtn.classList.add('hidden');
 }
 
-// ===================== PAUSA =====================
+// ==== PAUSA ====
 function pauseGame() {
     if (state.paused || state.gameOver) return;
     state.paused = true;
@@ -276,7 +428,7 @@ function updatePausePanel() {
         : '<li>–</li>';
 }
 
-// ===================== DIFICULTAD DINÁMICA =====================
+// ==== DIFICULTAD DINÁMICA ====
 const lerp = (a, b, t) => a + (b - a) * t;
 
 function difficultyFactor() {
@@ -289,8 +441,9 @@ function updateDifficulty() {
     state.currentStarSpeed = lerp(config.baseStarSpeed, config.maxStarSpeed, factor);
     state.currentObstacleSpeed = lerp(config.baseObstacleSpeed, config.maxObstacleSpeed, factor);
 
+    const maxCount = state.reducedEffects ? config.maxObstacleCountMobile : config.maxObstacleCount;
     const targetCount = Math.round(
-        lerp(config.baseObstacleCount, config.maxObstacleCount, factor)
+        lerp(config.baseObstacleCount, maxCount, factor)
     );
     syncObstacleCount(targetCount);
 }
@@ -303,9 +456,14 @@ function syncObstacleCount(target) {
         state.obstacles.pop();
     }
 }
-// ===================== FONDO Y OBSTÁCULOS =====================
+
+// ==== FONDO Y OBSTÁCULOS ====
 function initStars() {
-    state.stars = Array.from({ length: 220 }, () => ({
+    const baseCount = state.reducedEffects ? 120 : 220;
+    const areaFactor = Math.min(1, (state.width * state.height) / 700000);
+    const targetStars = Math.round(baseCount * (0.75 + areaFactor * 0.6));
+
+    state.stars = Array.from({ length: targetStars }, () => ({
         x: Math.random() * state.width,
         y: Math.random() * state.height,
         size: Math.random() * 1.2 + 0.3,
@@ -324,7 +482,7 @@ const obstacleTypes = [
     {
         type: 'comet',
         color: '#1ac8ff',
-        coreColor: '#ffffff',
+        coreColor: '#ffff',
         tailColor: 'rgba(26, 200, 255, 0.28)'
     },
     {
@@ -463,7 +621,7 @@ function drawStars() {
         ctx.globalAlpha = 0.3 + 0.7 * Math.abs(Math.sin(star.twinkle));
         ctx.beginPath();
         ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#ffff';
         ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -563,7 +721,7 @@ function drawObstacles() {
                 ctx.closePath();
                 ctx.fill();
 
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = '#ffff';
                 ctx.beginPath();
                 ctx.arc(0, 0, obs.radius * 0.25, 0, Math.PI * 2);
                 ctx.fill();
@@ -635,7 +793,8 @@ function drawObstacles() {
         ctx.restore();
     }
 }
-// ===================== CONSTRUCCIÓN DEL DRAGÓN =====================
+
+// ==== CONSTRUCCIÓN DEL DRAGÓN ====
 function initSegments() {
     state.segments = [];
     for (let i = 0; i < config.segmentCount; i++) {
@@ -649,27 +808,47 @@ function initSegments() {
 }
 
 function updatePlayer() {
-    const accel = 0.45;
-    const maxSpeed = 5.2;
-    const friction = 0.9;
-    const drift = 0.03;
+    const marginX = 80;
+    const marginY = 80;
 
-    state.velocity.x = (state.velocity.x + drift) * friction;
-    state.velocity.y *= friction;
+    if (state.inputMode === 'touch') {
+        const followStrength = state.reducedEffects ? 0.12 : 0.18;
+        const maxSpeed = state.reducedEffects ? 6 : 7.2;
+        const friction = 0.84;
 
-    if (state.controls.left) state.velocity.x -= accel;
-    if (state.controls.right) state.velocity.x += accel;
-    if (state.controls.up) state.velocity.y -= accel;
-    if (state.controls.down) state.velocity.y += accel;
+        if (state.touchPointer.active && state.touchPointer.targetX !== null) {
+            const dx = state.touchPointer.targetX - state.pointer.x;
+            const dy = state.touchPointer.targetY - state.pointer.y;
+            state.velocity.x += dx * followStrength * 0.06;
+            state.velocity.y += dy * followStrength * 0.06;
+        } else {
+            state.velocity.x *= friction;
+            state.velocity.y *= friction;
+        }
 
-    state.velocity.x = Math.max(-maxSpeed, Math.min(maxSpeed, state.velocity.x));
-    state.velocity.y = Math.max(-maxSpeed, Math.min(maxSpeed, state.velocity.y));
+        state.velocity.x = Math.max(-maxSpeed, Math.min(maxSpeed, state.velocity.x));
+        state.velocity.y = Math.max(-maxSpeed, Math.min(maxSpeed, state.velocity.y));
+    } else {
+        const accel = 0.45;
+        const maxSpeed = 5.2;
+        const friction = 0.9;
+        const drift = 0.03;
+
+        state.velocity.x = (state.velocity.x + drift) * friction;
+        state.velocity.y *= friction;
+
+        if (state.controls.left) state.velocity.x -= accel;
+        if (state.controls.right) state.velocity.x += accel;
+        if (state.controls.up) state.velocity.y -= accel;
+        if (state.controls.down) state.velocity.y += accel;
+
+        state.velocity.x = Math.max(-maxSpeed, Math.min(maxSpeed, state.velocity.x));
+        state.velocity.y = Math.max(-maxSpeed, Math.min(maxSpeed, state.velocity.y));
+    }
 
     state.pointer.x += state.velocity.x;
     state.pointer.y += state.velocity.y;
 
-    const marginX = 80;
-    const marginY = 80;
     if (state.pointer.x < marginX) {
         state.pointer.x = marginX;
         state.velocity.x = 0;
@@ -703,9 +882,7 @@ function updatePlayer() {
     }
 }
 
-
-
-// ===================== PARTÍCULAS =====================
+// ==== PARTÍCULAS ====
 class Ember {
     constructor(x, y, vx, vy, life, color) {
         this.reset(x, y, vx, vy, life, color);
@@ -742,6 +919,8 @@ class Ember {
 
 function spawnTrailParticles(x, y) {
     if (Math.random() > config.particleSpawnRate || state.gameOver) return;
+    if (state.reducedEffects && Math.random() > 0.4) return;
+
     const color = Math.random() > 0.5 ? '255, 43, 118' : '0, 255, 255';
     const ember = state.particles.find((p) => p.life <= 0);
     const vx = -state.currentScrollSpeed * 0.3 + (Math.random() - 0.5);
@@ -756,8 +935,9 @@ function spawnTrailParticles(x, y) {
 }
 
 function spawnExplosion(x, y) {
-    for (let i = 0; i < 40; i++) {
-        const angle = (Math.PI * 2 * i) / 40;
+    const count = state.reducedEffects ? 20 : 40;
+    for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count;
         state.explosionParticles.push(
             new Ember(
                 x,
@@ -771,7 +951,7 @@ function spawnExplosion(x, y) {
     }
 }
 
-// ===================== COLISIONES Y SCORE =====================
+// ==== COLISIONES Y SCORE ====
 function checkCollisions() {
     if (state.gameOver) return;
     const head = state.segments[0];
@@ -805,7 +985,7 @@ function handleGameOver(x, y) {
     showGameOverPanel();
 }
 
-// ===================== RENDER DEL DRAGÓN =====================
+// ==== RENDER DEL DRAGÓN ====
 function renderDragon() {
     const { segments, time } = state;
 
@@ -816,7 +996,7 @@ function renderDragon() {
         const sway = Math.sin(state.time * 0.01) * 6;
         const wave =
             Math.sin(time * config.waveFrequency * 0.8 + seg.offset) *
-                config.waveAmplitude * 0.8 * (1 - progress) +
+            config.waveAmplitude * 0.8 * (1 - progress) +
             sway * (1 - progress);
         const normalAngle = seg.angle + Math.PI / 2;
 
@@ -861,7 +1041,7 @@ function renderHead() {
         const h = dragonSprite.height * scale;
         ctx.drawImage(dragonSprite, -w / 2, -h / 2, w, h);
     } else {
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#ffff';
         ctx.beginPath();
         ctx.arc(0, 0, config.headRadius, 0, Math.PI * 2);
         ctx.fill();
@@ -870,14 +1050,22 @@ function renderHead() {
     ctx.restore();
 }
 
-// ===================== LOOP PRINCIPAL =====================
+// ==== LOOP PRINCIPAL ====
+function pruneParticles(list) {
+    for (let i = list.length - 1; i >= 0; i--) {
+        if (!list[i].update()) {
+            const lastIndex = list.length - 1;
+            if (i !== lastIndex) {
+                list[i] = list[lastIndex];
+            }
+            list.pop();
+        }
+    }
+}
+
 function updateParticles() {
-    for (let i = state.particles.length - 1; i >= 0; i--) {
-        if (!state.particles[i].update()) state.particles.splice(i, 1);
-    }
-    for (let i = state.explosionParticles.length - 1; i >= 0; i--) {
-        if (!state.explosionParticles[i].update()) state.explosionParticles.splice(i, 1);
-    }
+    pruneParticles(state.particles);
+    pruneParticles(state.explosionParticles);
 }
 
 function drawParticles() {
@@ -921,6 +1109,12 @@ function render() {
     state.time += 1;
     requestAnimationFrame(render);
 }
+
+// ==== INICIALIZACIÓN ====
+const detectedMobile = detectMobile();
+state.touchDevice = detectedMobile;
+setInputMode(detectedMobile ? 'touch' : 'keyboard');
+
 // Basado en partes del proyecto "Dragon-space" (Apache License 2.0)
 // Modificaciones propias por Hugo Ibañez Sanchez, 2025.
 resetGame();
